@@ -1,0 +1,71 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Unpack ZIP and Prepare Project Files
+      run: |
+        echo "=== 1. فك ضغط أي ملف ZIP مرفوع في المستودع ==="
+        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
+        if [ -n "$ZIP_FILE" ]; then
+          echo "تم العثور على ملف مضغوط: $ZIP_FILE. جاري فك الضغط..."
+          unzip -o "$ZIP_FILE"
+        else
+          echo "لم يتم العثور على ملف ZIP، متابعة فحص الملفات العادية..."
+        fi
+
+        echo "=== 2. ترتيب ملفات أندرويد في المسار الرئيسي ==="
+        # إذا تم فك الضغط داخل مجلد مثل LockGuard-Android13
+        SUBFOLDER=$(find . -maxdepth 2 -type d -name "*LockGuard*" | head -n 1)
+        if [ -n "$SUBFOLDER" ] && [ ! -f "settings.gradle.kts" ]; then
+          echo "نقل الملفات من المجلد الفرعي $SUBFOLDER إلى المسار الرئيسي..."
+          cp -r $SUBFOLDER/* . 2>/dev/null || true
+          cp -r $SUBFOLDER/.* . 2>/dev/null || true
+        fi
+
+        # البحث عن مكان ملف settings.gradle ونقل الملفات إذا كانت متفرقة
+        SETTINGS_PATH=$(find . -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
+        if [ -n "$SETTINGS_PATH" ]; then
+          PROJ_DIR=$(dirname "$SETTINGS_PATH")
+          if [ "$PROJ_DIR" != "." ]; then
+            echo "نقل المشروع من $PROJ_DIR..."
+            cp -r $PROJ_DIR/* . 2>/dev/null || true
+            cp -r $PROJ_DIR/.* . 2>/dev/null || true
+          fi
+        fi
+
+        ls -la
+
+    - name: Build Debug APK
+      run: |
+        echo "=== 3. بدء تجميع وبناء ملف APK ==="
+        if [ -f "./gradlew" ]; then
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
+        else
+          echo "جاري البناء باستخدام نظام gradle المدمج..."
+          gradle assembleDebug --stacktrace
+        fi
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: LockGuard-Android-APK
+        path: app/build/outputs/apk/debug/app-debug.apk

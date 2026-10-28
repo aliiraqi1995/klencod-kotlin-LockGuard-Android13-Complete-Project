@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">حارس قفل الشاشة</string>
+    <string name="device_admin_label">حارس قفل الشاشة الذكي</string>
+    <string name="device_admin_description">صلاحية مراقبة محاولات فتح القفل الخاطئة والتقاط صورة للمتطفل فوراً لحماية خصوصيتك.</string>
+</resources>
